@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <RepositoryUrl>https://github.com/mtnrbq/Gjallarhorn</RepositoryUrl>
     <Description>Pre-release NetStandard 2.0 fork of https://github.com/ReedCopsey/Gjallarhorn for testing</Description>
