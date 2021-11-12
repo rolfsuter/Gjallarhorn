@@ -20,7 +20,7 @@ with
         | _ -> false
 
     /// Convert to a list of strings. If forceOutput is true, the list will have a single, empty
-    /// string in valid cases 
+    /// string in valid cases
     member this.ToList (forceOutput : bool) =
         match this, forceOutput with
         | Valid, true -> ValidationResult.ValidResultAsList
@@ -31,7 +31,7 @@ with
 /// The output of validating an input signal
 type IValidatedSignal<'a, 'b> =
     inherit ISignal<'b option>
-                
+
     /// The raw, unvalidated input
     abstract member RawInput : ISignal<'a> with get
 
@@ -39,7 +39,7 @@ type IValidatedSignal<'a, 'b> =
     abstract member ValidationResult : ISignal<ValidationResult> with get
 
     /// Check to see if type is currently in a valid state
-    abstract member IsValid : bool with get        
+    abstract member IsValid : bool with get
 
 /// Basic validation support
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -54,7 +54,7 @@ module Validation =
 
     /// Defines the Validation as being in one of three possible states
     type ValidationCollector<'a> =
-    /// Validation in a valid state 
+    /// Validation in a valid state
     | Valid of value : 'a
     /// Validation in an invalid state
     | Invalid of value : 'a * error : string list * status : InvalidValidationStatus
@@ -65,7 +65,7 @@ module Validation =
     /// Fix the current state of errors, bypassing all future validation checks if we're in an error state
     let fixErrors (step : ValidationCollector<'a>) =
         match step with
-        | ValidationCollector.Invalid(value, errors, InvalidValidationStatus.CollectingMessages) -> 
+        | ValidationCollector.Invalid(value, errors, InvalidValidationStatus.CollectingMessages) ->
             // Switch us from invalid to invalid with errors fixed
             ValidationCollector.Invalid(value, errors, InvalidValidationStatus.Completed)
         | _ -> step
@@ -74,18 +74,18 @@ module Validation =
     /// Also supplies a custom error message to replace the existing
     let fixErrorsWithMessage errorMessage (step : ValidationCollector<'a>) =
         match step with
-        | ValidationCollector.Invalid(value, _, InvalidValidationStatus.CollectingMessages) -> 
+        | ValidationCollector.Invalid(value, _, InvalidValidationStatus.CollectingMessages) ->
             // Switch us from invalid to invalid with errors fixed
             ValidationCollector.Invalid(value, [errorMessage], InvalidValidationStatus.Completed)
         | _ -> step
 
     /// Create a custom validator using a custom function ('a -> string option) . The error message can use {0} for a placeholder for the property value. None indicates success.
-    let validateWith (validator : 'a -> string option) (step : ValidationCollector<'a>) =        
-        let success = 
-            match step with            
+    let validateWith (validator : 'a -> string option) (step : ValidationCollector<'a>) =
+        let success =
+            match step with
             | ValidationCollector.Invalid(_, _, InvalidValidationStatus.Completed) -> None // Short circuit
             | ValidationCollector.Invalid(value, _, _) -> validator value
-            | ValidationCollector.Valid(value) -> validator value        
+            | ValidationCollector.Valid(value) -> validator value
         match success, step with
         | _, ValidationCollector.Invalid(_, _, InvalidValidationStatus.Completed) -> step // If our errors are fixed coming in, just pass through
         | None, ValidationCollector.Valid(value) -> ValidationCollector.Valid(value)
@@ -94,17 +94,17 @@ module Validation =
         | Some error, ValidationCollector.Invalid(value, err, status) -> ValidationCollector.Invalid(value, err @ [error], status)
 
     /// Create a custom converter validator using a function ('a -> Choice<'b,string>) and default value on conversion failure. Choice2of2 indicates a failure error message. The error message can use {0} for a placeholder for the property name.  Conversions always stop collecting on failure.
-    let customConverter (validator : 'a -> Choice<'b,string>) (defaultOnFailure: 'b) (step : ValidationCollector<'a>) =        
-        match step with            
-        | ValidationCollector.Invalid(value, err, InvalidValidationStatus.Completed) -> 
+    let customConverter (validator : 'a -> Choice<'b,string>) (defaultOnFailure: 'b) (step : ValidationCollector<'a>) =
+        match step with
+        | ValidationCollector.Invalid(value, err, InvalidValidationStatus.Completed) ->
             match validator value with
             | Choice1Of2 newValue -> ValidationCollector.Invalid(newValue, err, InvalidValidationStatus.Completed)
             | Choice2Of2 _ -> ValidationCollector.Invalid(defaultOnFailure, err, InvalidValidationStatus.Completed)
-        | ValidationCollector.Invalid(value, err, InvalidValidationStatus.CollectingMessages) -> 
+        | ValidationCollector.Invalid(value, err, InvalidValidationStatus.CollectingMessages) ->
             match validator value with
             | Choice1Of2 newValue -> ValidationCollector.Invalid(newValue, err, InvalidValidationStatus.Completed)
             | Choice2Of2 error -> ValidationCollector.Invalid(defaultOnFailure, err @ [ error ], InvalidValidationStatus.Completed)
-        | ValidationCollector.Valid(value) -> 
+        | ValidationCollector.Valid(value) ->
             match validator value with
             | Choice1Of2 newValue -> ValidationCollector.Valid(newValue)
             | Choice2Of2 error -> ValidationCollector.Invalid(defaultOnFailure, [ error ], InvalidValidationStatus.Completed)
@@ -112,7 +112,7 @@ module Validation =
     /// Library of validation converters which can be used to convert value representations as part of the validation process
     module Converters =
         /// An "id" style conversion which does nothing
-        let toSelf (input : ValidationCollector<'a>) = 
+        let toSelf (input : ValidationCollector<'a>) =
             let convert (value : 'a) = Choice1Of2 (value)
             let value =
                 match input with
@@ -121,79 +121,79 @@ module Validation =
             customConverter convert value input
 
         /// Convert to a string representation using Object.ToString()
-        let toString (input : ValidationCollector<'a>) = 
+        let toString (input : ValidationCollector<'a>) =
             let convert (value : 'a) = Choice1Of2 (value.ToString())
             customConverter convert "" input
 
         /// Convert between any two types, using System.Convert.ChangeType
         let fromTo<'a,'b> (input : ValidationCollector<'a>) : ValidationCollector<'b> =
-            let convert (value : 'a) = 
+            let convert (value : 'a) =
                 try
                     Choice1Of2 <| (System.Convert.ChangeType(box value, typeof<'b>) :?> 'b)
                 with
-                | _ -> 
+                | _ ->
                     Choice2Of2 "Value could not be converted."
 
             customConverter convert Unchecked.defaultof<'b> input
 
         /// Convert from a string to an integer specifying culture information
-        let stringToInt32C style provider input = 
-            let convert (value : string) = 
+        let stringToInt32C style provider input =
+            let convert (value : string) =
                 match System.Int32.TryParse(value,style,provider) with
                 | false, _ -> Choice2Of2 "Value does not represent a valid number."
                 | true, v -> Choice1Of2 v
             customConverter convert Unchecked.defaultof<int> input
 
         /// Convert from a string to an integer
-        let stringToInt32 input = 
-            let convert (value : string) = 
+        let stringToInt32 input =
+            let convert (value : string) =
                 match System.Int32.TryParse value with
                 | false, _ -> Choice2Of2 "Value does not represent a valid number."
                 | true, v -> Choice1Of2 v
             customConverter convert Unchecked.defaultof<int> input
 
         /// Convert from a string to a 64bit float
-        let stringToDouble input = 
-            let convert (value : string) = 
+        let stringToDouble input =
+            let convert (value : string) =
                 match System.Double.TryParse value with
                 | false, _ -> Choice2Of2 "Value does not represent a valid number."
                 | true, v -> Choice1Of2 v
             customConverter convert Unchecked.defaultof<float> input
 
         /// Convert from a string to a double specifying culture information
-        let stringToDoubleC style provider input = 
-            let convert (value : string) = 
+        let stringToDoubleC style provider input =
+            let convert (value : string) =
                 match System.Double.TryParse(value,style,provider) with
                 | false, _ -> Choice2Of2 "Value does not represent a valid number."
                 | true, v -> Choice1Of2 v
             customConverter convert Unchecked.defaultof<float> input
 
-    module Validators =    
+    module Validators =
         // Simple validator that does nothing
         let noValidation input =
             input
 
         // String validations
-        let notNullOrWhitespace (str : ValidationCollector<string>) = 
-            let validation value = if String.IsNullOrWhiteSpace(value) then Some "Value cannot be null or empty." else None            
-            validateWith validation  str 
+        let notNullOrWhitespace (str : ValidationCollector<string>) =
+            let validation value = if String.IsNullOrWhiteSpace(value) then Some "Value cannot be null or empty." else None
+            validateWith validation  str
 
-        let noSpaces (str : ValidationCollector<string>) = 
+        let noSpaces (str : ValidationCollector<string>) =
             let validation (value : string) = if not(String.IsNullOrEmpty(value)) && value.Contains(" ") then Some "Value cannot contain a space." else None
             validateWith validation str
 
-        let hasLength (length : int) (str : ValidationCollector<string>) = 
+        let hasLength (length : int) (str : ValidationCollector<string>) =
             let validation (value : string) = if (value = null && length <> 0 ) || value.Length <> length then Some ("Value must be " + length.ToString() + " characters long.") else None
             validateWith validation str
 
-        let hasLengthAtLeast (length : int) (str : ValidationCollector<string>) = 
+        let hasLengthAtLeast (length : int) (str : ValidationCollector<string>) =
             let validation (value : string) = if (value = null && length <> 0 ) || value.Length < length then Some ("Value must be at least " + length.ToString() + " characters long.") else None
             validateWith validation str
 
-        let hasLengthNoLongerThan (length : int) (str : ValidationCollector<string>) = 
+        let hasLengthNoLongerThan (length : int) (str : ValidationCollector<string>) =
             let validation (value : string) = if not(String.IsNullOrWhiteSpace(value)) && value.Length > length then Some ("Value must be no longer than " + length.ToString() + " characters long") else None
             validateWith validation str
-        
+
         let private matchesPatternInternal (pattern : string) (errorMsg : string) (str : ValidationCollector<string>) =
             let validation (value : string) = if not(String.IsNullOrWhiteSpace(value)) && Regex.IsMatch(value, pattern) then None else Some errorMsg
             validateWith validation str
@@ -204,7 +204,7 @@ module Validation =
         let isAlphanumeric str =
             matchesPatternInternal "[^a-zA-Z0-9]" "Value must be alphanumeric" str
 
-        let containsAtLeastOneDigit str = 
+        let containsAtLeastOneDigit str =
             matchesPatternInternal "[0-9]" "Value must contain at least one digit" str
 
         let containsAtLeastOneUpperCaseCharacter str =
@@ -214,7 +214,7 @@ module Validation =
             matchesPatternInternal "[a-z]" "Value must contain at least one lowercase character" str
 
         // Generic validations
-        let notEqual value step = 
+        let notEqual value step =
             let validation v = if value = v then Some ("Value cannot equal " + value.ToString()) else None
             validateWith validation step
 
@@ -237,7 +237,7 @@ module Validation =
         let isBetween lowerBound upperBound step =
             let validation v = if lowerBound <= v && v <= upperBound then None else Some ("Value must be between " + lowerBound.ToString() + " and " + upperBound.ToString())
             validateWith validation step
-    
+
         let containedWithin collection step =
             let validation value = if Seq.contains value collection then None else Some ("Value must be one of: " + String.Join(", ", Seq.map (fun i -> i.ToString()) collection))
             validateWith validation step
@@ -249,7 +249,7 @@ module Validation =
 
     /// Check to see if a result is in a valid state
     let isValid result =
-        match result with 
+        match result with
         | ValidationResult.Valid -> true
         | _ -> false
 
@@ -269,7 +269,7 @@ module Validation =
 //    /// Core interface for all validated signal types
 //    type IValidatedSignal<'a> =
 //        inherit ISignal<'a>
-//    
+//
 //        /// The current validation status
 //        abstract member ValidationResult : ISignal<ValidationResult> with get
 //

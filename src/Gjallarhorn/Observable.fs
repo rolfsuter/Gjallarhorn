@@ -37,11 +37,11 @@ module Observable =
         let evt = Event<_>()
         let callback value =
             async {
-                let! asyncResult = mapping value    
+                let! asyncResult = mapping value
                 evt.Trigger asyncResult
-            } 
+            }
             |> Async.Start
-            
+
         let subscription = provider.Subscribe callback
         {
             new IObservable<'b> with
@@ -58,11 +58,11 @@ module Observable =
             async {
                 use _execHandle = tracker.GetExecutionHandle()
                 let! result = mapping v
-                return result               
+                return result
             }
         mapAsync trackingMap provider
 
     module Subscription =
         /// Create a subscription to an observable which copies its value upon change into a mutable
-        let copyTo (target : IMutatable<'a>) (provider : IObservable<'a>) =            
+        let copyTo (target : IMutatable<'a>) (provider : IObservable<'a>) =
             provider.Subscribe(fun v -> target.Value <- v)

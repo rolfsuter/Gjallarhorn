@@ -16,7 +16,7 @@ type Mutable() =
     /// Create a mutable given an initial value
     static member Create<'a when 'a : equality> (value : 'a) =
         Mutable<'a>(value) :> IMutatable<'a>
-    
+
     /// Update a mutable given a stepping function
     static member Update<'a> (original : IMutatable<'a>, steppingFunction : Func<'a, 'a>) =
         Mutable.step steppingFunction.Invoke original
@@ -64,7 +64,7 @@ type Signal() =
     static member Combine (signal1, signal2, signal3, signal4, signal5, signal6, signal7, signal8, signal9, signal10, mapping:Func<_,_,_,_,_,_,_,_,_,_,_>) =
         Signal.map10 (mapping.ToFSharpFunc()) signal1 signal2 signal3 signal4 signal5 signal6 signal7 signal8 signal9 signal10
 
-/// Extension methods for working with Signals from C# using a LINQ inspired API    
+/// Extension methods for working with Signals from C# using a LINQ inspired API
 [<AbstractClass;Sealed;Extension>]
 type SignalExtensions() =
     /// Create a cached signal over a provider
@@ -103,7 +103,7 @@ type SignalExtensions() =
     [<Extension>]
     /// Perform an asynchronous mapping from one signal to another
     static member SelectAsync<'a,'b  when 'a : equality and 'b : equality> (this:ISignal<'a>, initialValue:'b, mapper:Func<'a,Task<'b>>) =
-        let mapping a = 
+        let mapping a =
             async {
                 let! result = Async.AwaitTask (mapper.Invoke a)
                 return result
@@ -114,14 +114,14 @@ type SignalExtensions() =
     [<Extension>]
     /// Perform an asynchronous mapping from one signal to another, tracking execution via an IdleTracker
     static member SelectAsync<'a,'b when 'b : equality> (this:ISignal<'a>, initialValue:'b, tracker, mapper:Func<'a,Task<'b>>) =
-        let mapping a = 
+        let mapping a =
             async {
                 let! result = Async.AwaitTask (mapper.Invoke a)
                 return result
             }
         this
         |> Signal.mapAsyncTracked mapping initialValue tracker
-                
+
     [<Extension;EditorBrowsable(EditorBrowsableState.Never)>]
     /// Perform a projection from a signal, typically only used for query syntax
     static member SelectMany<'a,'b>(this:ISignal<'a>, mapper:Func<'a,ISignal<'b>>) =
@@ -204,14 +204,14 @@ type SignalExtensions() =
         |> Signal.observeOn context
 
 
-/// Extension methods for working with Observables from C# using a LINQ inspired API    
+/// Extension methods for working with Observables from C# using a LINQ inspired API
 [<AbstractClass;Sealed;Extension>]
 type ObservableExtensions() =
     [<Extension>]
     /// Convert from an observable and an initial value to a signal
     static member ToSignal<'a when 'a : equality>(this:IObservable<'a>, initialValue:'a) =
         Signal.fromObservable initialValue this
-        
+
 //NOTE: This allows non-F# extensions to have proper visibility/interop with all CLR languages
 //NOTE: This attribute is only required once per assembly.
 //NOTE: This is being placed _outside_ of AssemblyInfo.fs since that file gets automatically

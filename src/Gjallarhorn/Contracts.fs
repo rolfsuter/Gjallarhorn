@@ -14,9 +14,9 @@ type ITracksDependents =
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     /// Ends tracking of a dependent
     abstract member Untrack : IDependent -> unit
-and 
+and
     /// A type which depends on a signal
-    [<AllowNullLiteral>] IDependent =    
+    [<AllowNullLiteral>] IDependent =
     /// Signals the type that it should refresh its current value as one of it's dependencies has been updated
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     abstract member UpdateDirtyFlag : obj -> unit
@@ -43,7 +43,7 @@ type ISignal<'a> =
 /// Core interface for all mutatable types
 type IMutatable<'a> =
     inherit ISignal<'a>
-    
+
     /// The current value of the type
     abstract member Value : 'a with get, set
 
@@ -51,8 +51,8 @@ type IMutatable<'a> =
 /// Interface for mutable types that have atomic update functionality
 type IAtomicMutatable<'a> =
     inherit IMutatable<'a>
-    
-    /// Updates the current value in a manner that guarantees proper execution, 
+
+    /// Updates the current value in a manner that guarantees proper execution,
     /// given a function that takes the current value and generates a new value,
     /// and then returns the new value
     /// <remarks>The function may be executed multiple times, depending on the implementation.</remarks>
@@ -61,8 +61,8 @@ type IAtomicMutatable<'a> =
 /// Interface for mutable types that have asynchronous support atomic update functionality
 type IAsyncMutatable<'a> =
     inherit IAtomicMutatable<'a>
-    
-    /// Asynchronously update the current value in a manner that guarantees proper execution, 
+
+    /// Asynchronously update the current value in a manner that guarantees proper execution,
     /// given a function that takes the current value and generates a new value,
     /// and then returns the new value asynchronously
     /// <remarks>The function may be executed multiple times, depending on the implementation.</remarks>

@@ -7,26 +7,26 @@ open System
 open System.Runtime.CompilerServices
 
 [<Extension>]
-type internal FSharpFuncExtensions = 
-    [<Extension>] 
+type internal FSharpFuncExtensions =
+    [<Extension>]
     static member ToFSharpFunc<'a,'b> (func:System.Func<'a,'b>) = fun a -> func.Invoke(a)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c> (func:System.Func<'a,'b,'c>) = fun a b -> func.Invoke(a,b)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d> (func:System.Func<'a,'b,'c,'d>) = fun a b c -> func.Invoke(a,b,c)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e> (func:System.Func<'a,'b,'c,'d,'e>) = fun a b c d -> func.Invoke(a,b,c,d)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e,'f> (func:System.Func<'a,'b,'c,'d,'e,'f>) = fun a b c d e -> func.Invoke(a,b,c,d,e)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e,'f,'g> (func:System.Func<'a,'b,'c,'d,'e,'f,'g>) = fun a b c d e f -> func.Invoke(a,b,c,d,e,f)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e,'f,'g,'h> (func:System.Func<'a,'b,'c,'d,'e,'f,'g,'h>) = fun a b c d e f g -> func.Invoke(a,b,c,d,e,f,g)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e,'f,'g,'h,'i> (func:System.Func<'a,'b,'c,'d,'e,'f,'g,'h,'i>) = fun a b c d e f g h -> func.Invoke(a,b,c,d,e,f,g,h)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e,'f,'g,'h,'i,'j> (func:System.Func<'a,'b,'c,'d,'e,'f,'g,'h,'i,'j>) = fun a b c d e f g h i -> func.Invoke(a,b,c,d,e,f,g,h,i)
-    [<Extension>] 
+    [<Extension>]
     static member ToFSharpFunc<'a,'b,'c,'d,'e,'f,'g,'h,'i,'j,'k> (func:System.Func<'a,'b,'c,'d,'e,'f,'g,'h,'i,'j,'k>) = fun a b c d e f g h i j -> func.Invoke(a,b,c,d,e,f,g,h,i,j)
 
 /// A disposable type that manages multiple other disposables, and disposes all of them when disposed
@@ -51,7 +51,7 @@ type CompositeDisposable() =
     /// Remove a disposable from this tracker without disposing of it
     member __.Remove (disposable : IDisposable) = disposables.Remove(disposable) |> ignore
 
-    /// Dispose all of our tracked disposables and remove them all 
+    /// Dispose all of our tracked disposables and remove them all
     member __.Dispose() =
         disposables
         |> Seq.iter (fun d -> d.Dispose())
@@ -59,35 +59,35 @@ type CompositeDisposable() =
 
     interface ICompositeDisposable with
         member this.Add d = this.Add d
-        member this.Remove d = this.Remove d 
+        member this.Remove d = this.Remove d
 
     interface IDisposable with
-        /// Dispose all of our tracked disposables and remove them all 
+        /// Dispose all of our tracked disposables and remove them all
         member this.Dispose() = this.Dispose()
 
 module internal DisposeHelpers =
     let getValue (provider : ISignal<_> option) typeNameFun =
-        match provider with 
+        match provider with
         | Some(v) -> v.Value
-        | None -> raise <| ObjectDisposedException(typeNameFun())        
+        | None -> raise <| ObjectDisposedException(typeNameFun())
 
     let setValue (provider : IMutatable<_> option) mapping value typeNameFun =
-        match provider with 
+        match provider with
         | Some(v) -> v.Value <- mapping(value)
-        | None -> raise <| ObjectDisposedException(typeNameFun())        
+        | None -> raise <| ObjectDisposedException(typeNameFun())
 
     let disposeIfDisposable (v : obj) =
         match v with
-        | :? IDisposable as d -> 
+        | :? IDisposable as d ->
             d.Dispose()
         | _ -> ()
-        
+
     let cleanup (provider : #ISignal<'a> option byref) disposeProviderOnDispose (self : #IDependent) =
             match provider with
             | None -> ()
             | Some(v) ->
                 v.Untrack self
-                
+
                 if disposeProviderOnDispose then
                     disposeIfDisposable v
 
@@ -107,17 +107,17 @@ type Mutable<'a when 'a : equality>(value : 'a) =
 
     // Stores dependencies remotely to not use any space in the object (no memory overhead requirements)
     member private this.Dependencies with get() = Dependencies.createRemote this
-    
+
     /// Gets and sets the Value contained within this mutable
-    member this.Value 
+    member this.Value
         with get() = v
         and set(value) =
-            if v <> value then            
+            if v <> value then
                 v <- value
                 this.Dependencies.MarkDirty(this)
 
     override this.Finalize() =
-        this.Dependencies.RemoveAll this        
+        this.Dependencies.RemoveAll this
 
     interface IObservable<'a> with
         member this.Subscribe obs = this.Dependencies.Subscribe(obs,this)
@@ -133,7 +133,7 @@ type Mutable<'a when 'a : equality>(value : 'a) =
     interface IMutatable<'a> with
         member this.Value with get() = v and set(v) = this.Value <- v
 
-[<AbstractClass>]       
+[<AbstractClass>]
 /// Base class which simplifies implementation of standard signals
 type SignalBase<'a>(dependencies) as self =
     let mutable disposed = false
@@ -156,20 +156,20 @@ type SignalBase<'a>(dependencies) as self =
 
     /// Signals to dependencies that we have updated
     abstract member MarkDirtyGuarded : obj -> unit
-    default this.MarkDirtyGuarded _ = 
+    default this.MarkDirtyGuarded _ =
         lock dependencies (fun _ ->
             if not signalGuard then
                 signalGuard <- true
                 dependencies.MarkDirty this |> ignore
                 signalGuard <- false)
-   
+
     /// Update and fetch the current value.  Implementers should only update if we're dirty.
-    abstract member UpdateAndGetCurrentValue : updateRequired : bool -> 'a    
+    abstract member UpdateAndGetCurrentValue : updateRequired : bool -> 'a
 
     /// Gets the current value
-    member this.Value 
-        with get() : 'a = 
-            let updateRequired = 
+    member this.Value
+        with get() : 'a =
+            let updateRequired =
                 if dirty then
                     dirty <- false
                     true
@@ -178,7 +178,7 @@ type SignalBase<'a>(dependencies) as self =
             this.UpdateAndGetCurrentValue updateRequired
 
     member __.Dirty with get() = dirty and set(v) = dirty <- v
-                
+
     /// Notifies us that we need to refresh our value
     abstract member MarkDirty : obj -> unit
     default this.MarkDirty source =
@@ -194,7 +194,7 @@ type SignalBase<'a>(dependencies) as self =
     default __.HasDependencies with get() = dependencies.HasDependencies
 
     override this.Finalize() =
-        (this :> IDisposable).Dispose()        
+        (this :> IDisposable).Dispose()
 
     interface ISignal<'a> with
         member this.Value with get() = this.Value
@@ -235,24 +235,24 @@ type internal ObservableToSignal<'a when 'a : equality>(valueProvider : IObserva
                 let target = reference.Target
                 match target with
                 | null -> sub.Dispose()
-                | t -> 
+                | t ->
                     ObservableToSignal.SubscriptionOnNext (unbox t) v )
-        sub    
+        sub
 
-    let mutable weakSubscription = subscribeWeak self valueProvider.Value    
+    let mutable weakSubscription = subscribeWeak self valueProvider.Value
     let mutable signalGuard = false
 
     static member SubscriptionOnNext (target : ObservableToSignal<'a>) value =
         target.UpdateValue value
 
     /// Signals to dependencies that we have updated
-    member this.Signal () = 
+    member this.Signal () =
         if not signalGuard then
             signalGuard <- true
             dependencies.MarkDirty this |> ignore
             signalGuard <- false
-    
-    member private this.UpdateValue v = 
+
+    member private this.UpdateValue v =
         if lastValue <> v then
             lastValue <- v
             this.Signal()
@@ -267,7 +267,7 @@ type internal ObservableToSignal<'a when 'a : equality>(valueProvider : IObserva
     member __.HasDependencies with get() = dependencies.HasDependencies
 
     override this.Finalize() =
-        (this :> IDisposable).Dispose()        
+        (this :> IDisposable).Dispose()
 
     interface ISignal<'a> with
         member this.Value with get() = this.Value
@@ -280,25 +280,25 @@ type internal ObservableToSignal<'a when 'a : equality>(valueProvider : IObserva
         member this.Subscribe obs = dependencies.Subscribe (obs,this)
 
     interface ITracksDependents with
-        member this.Track dep = 
-            dependencies.Add (dep,this)            
-        member this.Untrack dep = 
-            dependencies.Remove (dep,this)            
+        member this.Track dep =
+            dependencies.Add (dep,this)
+        member this.Untrack dep =
+            dependencies.Remove (dep,this)
 
     interface IDisposable with
-        member this.Dispose () =            
+        member this.Dispose () =
             dependencies.RemoveAll this
-            weakSubscription.Dispose()            
+            weakSubscription.Dispose()
             weakSubscription <- null
             valueProvider <- None
             GC.SuppressFinalize this
 
 type internal MappingSignal<'a,'b when 'a : equality and 'b : equality>(valueProvider : ISignal<'a>, mapping : 'a -> 'b, disposeProviderOnDispose : bool) =
-    inherit SignalBase<'b>([| valueProvider |])    
-    
+    inherit SignalBase<'b>([| valueProvider |])
+
     let mutable valueProvider = Some(valueProvider)
-    
-    // Note that we default this here, then set it afterwards.  
+
+    // Note that we default this here, then set it afterwards.
     // This avoids an invalid operation exception in the finalizer
     // if the mapping throws at construction time.
     let mutable lastValue = Unchecked.defaultof<'b>
@@ -314,9 +314,9 @@ type internal MappingSignal<'a,'b when 'a : equality and 'b : equality>(valuePro
                 lastInput <- input
                 let value = lastInput |> mapping
                 if lastValue <> value then
-                    lastValue <- value     
-        lastValue      
-   
+                    lastValue <- value
+        lastValue
+
     override this.OnDisposing () =
         DisposeHelpers.cleanup &valueProvider disposeProviderOnDispose this
 
@@ -329,13 +329,13 @@ type internal ObserveOnSignal<'a when 'a : equality>(valueProvider : ISignal<'a>
 type internal Mapping2Signal<'a,'b,'c when 'a : equality and 'b : equality and 'c : equality>(valueProvider1 : ISignal<'a>, valueProvider2 : ISignal<'b>, mapping : 'a -> 'b -> 'c) =
     inherit SignalBase<'c>([| valueProvider1 ; valueProvider2 |])
 
-    let mutable lastValue = Unchecked.defaultof<'c> 
+    let mutable lastValue = Unchecked.defaultof<'c>
     let mutable lastInput1 = Unchecked.defaultof<'a>
     let mutable lastInput2 = Unchecked.defaultof<'b>
     let mutable valueProvider1 = Some(valueProvider1)
     let mutable valueProvider2 = Some(valueProvider2)
 
-    do 
+    do
         lastInput1 <- valueProvider1.Value.Value
         lastInput2 <- valueProvider2.Value.Value
         lastValue <- mapping lastInput1 lastInput2
@@ -347,12 +347,12 @@ type internal Mapping2Signal<'a,'b,'c when 'a : equality and 'b : equality and '
             if lastInput1 <> v1 || lastInput2 <> v2 then
                 lastInput1 <- v1
                 lastInput2 <- v2
-                let value = 
+                let value =
                     mapping v1 v2
                 if lastValue <> value then
                     lastValue <- value
                     this.MarkDirtyGuarded this
-        lastValue    
+        lastValue
 
     override this.OnDisposing () =
          DisposeHelpers.cleanup &valueProvider1 false this
@@ -366,11 +366,11 @@ type internal MergeSignal<'a when 'a : equality>(valueProvider1 : ISignal<'a>, v
     let mutable valueProvider2 = Some(valueProvider2)
 
     member private this.Update (updated : obj) =
-        let value () = 
+        let value () =
             if obj.ReferenceEquals(updated, valueProvider1.Value) then
                 DisposeHelpers.getValue valueProvider1 (fun _ -> this.GetType().FullName)
             else
-                DisposeHelpers.getValue valueProvider2 (fun _ -> this.GetType().FullName)            
+                DisposeHelpers.getValue valueProvider2 (fun _ -> this.GetType().FullName)
         // We always flag ourself clean
         this.Dirty <- false
         if (valueProvider1.IsSome) then
@@ -378,7 +378,7 @@ type internal MergeSignal<'a when 'a : equality>(valueProvider1 : ISignal<'a>, v
             if lastValue <> value then
                 lastValue <- value
                 base.MarkDirtyGuarded this
-    
+
     override __.UpdateAndGetCurrentValue _ = lastValue
 
     // Specifically always trigger an udpate for merge
@@ -398,8 +398,8 @@ type internal IfSignal<'a when 'a : equality>(valueProvider : ISignal<'a>, initi
 
     override this.UpdateAndGetCurrentValue updateRequired =
         if updateRequired then
-            let value = 
-                let condition = DisposeHelpers.getValue conditionProvider (fun _ -> this.GetType().FullName)            
+            let value =
+                let condition = DisposeHelpers.getValue conditionProvider (fun _ -> this.GetType().FullName)
                 if condition then
                     DisposeHelpers.getValue valueProvider (fun _ -> this.GetType().FullName)
                 else
@@ -408,7 +408,7 @@ type internal IfSignal<'a when 'a : equality>(valueProvider : ISignal<'a>, initi
             if lastValue <> value then
                 lastValue <- value
         lastValue
-    
+
 
     override this.OnDisposing () =
         DisposeHelpers.cleanup &valueProvider false this
@@ -417,19 +417,19 @@ type internal IfSignal<'a when 'a : equality>(valueProvider : ISignal<'a>, initi
 type internal FilteredSignal<'a when 'a : equality> (valueProvider : ISignal<'a>, initialValue : 'a, filter : 'a -> bool, disposeProviderOnDispose : bool) =
     inherit SignalBase<'a>([| valueProvider |])
 
-    let mutable lastValue = Unchecked.defaultof<'a> 
+    let mutable lastValue = Unchecked.defaultof<'a>
 
-    let mutable valueProvider = Some(valueProvider) 
-    
+    let mutable valueProvider = Some(valueProvider)
+
     do
-        lastValue <- if filter(valueProvider.Value.Value) then valueProvider.Value.Value else initialValue   
+        lastValue <- if filter(valueProvider.Value.Value) then valueProvider.Value.Value else initialValue
 
     override this.UpdateAndGetCurrentValue updateRequired =
         if updateRequired then
             match valueProvider with
             | None -> ()
             | Some provider ->
-                let value = provider.Value                
+                let value = provider.Value
                 if (filter(value)) then
                     if lastValue <> value then
                         lastValue <- value
@@ -437,7 +437,7 @@ type internal FilteredSignal<'a when 'a : equality> (valueProvider : ISignal<'a>
 
     override this.OnDisposing () =
         DisposeHelpers.cleanup &valueProvider disposeProviderOnDispose this
-                        
+
 type internal ChooseSignal<'a,'b when 'b : equality>(valueProvider : ISignal<'a>, initialValue : 'b, filter : 'a -> 'b option) =
     inherit SignalBase<'b>([| valueProvider |])
 
@@ -445,8 +445,8 @@ type internal ChooseSignal<'a,'b when 'b : equality>(valueProvider : ISignal<'a>
 
     let mutable valueProvider = Some(valueProvider)
 
-    do    
-        lastValue <-         
+    do
+        lastValue <-
             match filter(valueProvider.Value.Value) with
             | Some v -> v
             | None -> initialValue
@@ -456,7 +456,7 @@ type internal ChooseSignal<'a,'b when 'b : equality>(valueProvider : ISignal<'a>
         match valueProvider with
         | None -> ()
         | Some provider ->
-            let value = provider.Value                
+            let value = provider.Value
             match (filter(value)) with
             | Some newValue ->
                 if lastValue <> newValue then
@@ -475,13 +475,13 @@ type internal CachedSignal<'a when 'a : equality> (valueProvider : ISignal<'a>) 
     // Caching acts like a subscription, since it has to update in case the
     // target is GCed
     // Note: Tracking does not hold a strong reference, so disposal is not necessary still
-    do 
+    do
         valueProvider.Track self
 
     // Only store a weak reference to our provider
     let handle = WeakReference<_>(valueProvider)
 
-    member private this.Update () =        
+    member private this.Update () =
         handle
         |> WeakRef.execute (fun provider ->
             let value = provider.Value
@@ -492,16 +492,16 @@ type internal CachedSignal<'a when 'a : equality> (valueProvider : ISignal<'a>) 
 
     override __.UpdateAndGetCurrentValue _ = lastValue
 
-    override this.MarkDirty v = 
+    override this.MarkDirty v =
                 this.Update ()
                 base.MarkDirty v
 
     override this.OnDisposing () =
         handle
         |> WeakRef.execute (fun v ->
-            v.Untrack this                    
+            v.Untrack this
             handle.SetTarget(Unchecked.defaultof<ISignal<'a>>))
-        |> ignore   
+        |> ignore
 
 namespace Gjallarhorn.Helpers
 
@@ -513,11 +513,11 @@ type IdleTracker(ctx : System.Threading.SynchronizationContext) =
     inherit SignalBase<bool>([| |])
 
     let handles = ResizeArray<_>()
-        
+
     member private this.AddHandle h =
         lock handles (fun _ ->
             handles.Add h
-            this.MarkDirtyGuarded this   
+            this.MarkDirtyGuarded this
         )
     member private this.RemoveHandle h =
         lock handles (fun _ ->
@@ -527,7 +527,7 @@ type IdleTracker(ctx : System.Threading.SynchronizationContext) =
     /// Gets an execution handle, which makes this as executing until the handle is disposed.
     /// Mutiple execution handles can be pulled simultaneously
     member this.GetExecutionHandle () =
-        let rec handle = 
+        let rec handle =
             { new System.IDisposable with
                 member __.Dispose() =
                     this.RemoveHandle handle
@@ -536,12 +536,12 @@ type IdleTracker(ctx : System.Threading.SynchronizationContext) =
         handle
 
     member private this.MarkDirtyBase source = base.MarkDirtyGuarded source
-    override this.MarkDirtyGuarded source = 
+    override this.MarkDirtyGuarded source =
         match ctx with
         | null -> this.MarkDirtyBase source
         | _ -> ctx.Post (System.Threading.SendOrPostCallback(fun _ -> this.MarkDirtyBase source), null)
-    
-    override __.UpdateAndGetCurrentValue _ = lock handles (fun _ -> handles.Count = 0)    
+
+    override __.UpdateAndGetCurrentValue _ = lock handles (fun _ -> handles.Count = 0)
     override __.OnDisposing () = ()
 
 namespace Gjallarhorn.Internal
@@ -559,24 +559,24 @@ type internal AsyncMappingSignal<'a,'b when 'b : equality>(valueProvider : ISign
         // Since this acts like a cache
         (valueProvider :> Internal.ITracksDependents).Track self
 
-    let mutable valueProvider = Some(valueProvider)    
+    let mutable valueProvider = Some(valueProvider)
     let ctx = System.Threading.SynchronizationContext.Current
 
     member private this.Update () =
-        let inputValue = 
+        let inputValue =
             DisposeHelpers.getValue valueProvider (fun _ -> this.GetType().FullName)
 
-        let exec =             
+        let exec =
             async {
-                let _execHandle = 
-                    tracker 
-                    |> Option.map (fun t -> t.GetExecutionHandle()) 
+                let _execHandle =
+                    tracker
+                    |> Option.map (fun t -> t.GetExecutionHandle())
                 let releaseHandle () =
                     _execHandle |> Option.iter (fun h -> h.Dispose())
-                    
+
                 let! result = mapFn(inputValue)
 
-                if lastValue <> result then    
+                if lastValue <> result then
                     if (ctx <> null) then
                         do! Async.SwitchToContext ctx
                     releaseHandle()
@@ -585,12 +585,12 @@ type internal AsyncMappingSignal<'a,'b when 'b : equality>(valueProvider : ISign
                 else
                     releaseHandle()
             }
-        
+
         Async.Start(exec, defaultArg cancellationToken System.Threading.CancellationToken.None )
 
-    override __.UpdateAndGetCurrentValue _ = lastValue    
+    override __.UpdateAndGetCurrentValue _ = lastValue
 
-    override this.MarkDirty v = 
+    override this.MarkDirty v =
         this.Update ()
         base.MarkDirty v
 
